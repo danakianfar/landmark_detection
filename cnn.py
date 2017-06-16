@@ -56,7 +56,7 @@ model.save('landmark_cnn.h5')
 model = load_model('landmark_cnn.h5')
 
 # Evaluate the model on the test data
-score = model.evaluate(({'input_img': images_test, 'head_pose': head_pose_test}, {'output': ldmks_2d_test}), verbose=0)
+score = model.evaluate(({'input_img': images_test, 'head_pose': head_pose_test}), {'output': ldmks_2d_test}, verbose=0)
 
 # Print the loss on the test data
-print('Test loss:', score[0])
+print('Test loss:', score)
