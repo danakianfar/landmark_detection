@@ -7,7 +7,7 @@ from keras.models import Model, load_model
 
 # Training parameters
 batch_size = 32
-epochs = 1
+epochs = 10
 landmark_dim = 2
 
 # Load data
@@ -19,10 +19,13 @@ input_img = Input(shape=(3, 80, 120), name='input_img')
 head_pose = Input(shape=(9,), name='head_pose')
 
 # Apply upper part of the network by doing convolutions
-tower_1 = Conv2D(64, (1, 1), padding='same', activation='relu', data_format="channels_first")(input_img)
-tower_1 = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1)
+tower_1 = Conv2D(64, (3, 3), padding='same', activation='relu')(input_img)
+tower_1 = MaxPooling2D((2, 2), strides=(1, 1))(tower_1)
 tower_1 = Conv2D(64, (3, 3), padding='same', activation='relu')(tower_1)
+tower_1 = MaxPooling2D((2, 2), strides=(1, 1))(tower_1)
+tower_1 = Conv2D(16, (3, 3), padding='same', activation='relu')(tower_1)
 tower_1 = Flatten()(tower_1)
+tower_1 = Dense(64, activation='relu')(tower_1)
 
 # concatenate the output of the convolutions and the head_pose information
 x = keras.layers.concatenate([tower_1, head_pose], axis=1)
@@ -37,6 +40,8 @@ model = Model(inputs = [input_img, head_pose], outputs = [output])
 
 # Set optimizer and loss
 model.compile(optimizer = 'adam', loss={'output': 'mean_squared_error'})
+
+print(model.summary())
 
 # Do the actual training
 history = model.fit(

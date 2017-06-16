@@ -1,6 +1,6 @@
 data/
 all_data.pkl
-landmark_cnn.h5
+*.h5
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
