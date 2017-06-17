@@ -19,7 +19,7 @@ landmark_dim = 3
 
 # Load data
 with open('all_data.pkl', 'rb') as f:
-    images_train, images_test, ldmks_2d_train, ldmks_2d_test, ldmks_3d_train, ldmks_3d_test, head_pose_train, head_pose_test = pickle.load(f)
+    images_train, images_test, ldmks_2d_train, ldmks_2d_test, ldmks_3d_train, ldmks_3d_test, head_pose_train, head_pose_test, look_vec_train, look_vec_test = pickle.load(f)
 
 # Define inputs for the network
 input_img = Input(shape=(3, 80, 120), name='input_img')
