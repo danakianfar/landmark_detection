@@ -4,10 +4,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from keras.layers import Dense, Conv2D, MaxPooling2D, Input, Flatten
 from keras.models import Model, load_model
+from keras import backend as K
+
+
+# Custom P-norm objective function
+def p_norm_loss(y_true, y_pred):
+    return K.mean(K.pow(y_pred - y_true, 4), axis=-1)
+
 
 # Training parameters
 batch_size = 32
-epochs = 10
+epochs = 50
 landmark_dim = 2
 
 # Load data
@@ -39,9 +46,9 @@ output = Dense(int(28 * landmark_dim), activation='linear', name='output')(x)
 model = Model(inputs = [input_img, head_pose], outputs = [output])
 
 # Set optimizer and loss
-model.compile(optimizer = 'adam', loss={'output': 'mean_squared_error'})
+model.compile(optimizer = 'adam', loss={'output': 'mean_absolute_error'})
 
-print(model.summary())
+model.summary()
 
 # Do the actual training
 history = model.fit(
@@ -58,7 +65,7 @@ plt.plot(history.history['loss'])
 model.save('landmark_cnn.h5')
 
 # Load the saved model
-model = load_model('landmark_cnn.h5')
+model = load_model('landmark_cnn.h5', custom_objects={'p_norm_loss': p_norm_loss})
 
 # Evaluate the model on the test data
 score = model.evaluate(({'input_img': images_test, 'head_pose': head_pose_test}), {'output': ldmks_2d_test}, verbose=0)
