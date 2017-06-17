@@ -14,8 +14,8 @@ def p_norm_loss(y_true, y_pred):
 
 # Training parameters
 batch_size = 32
-epochs = 50
-landmark_dim = 2
+epochs = 20
+landmark_dim = 3
 
 # Load data
 with open('all_data.pkl', 'rb') as f:
@@ -46,29 +46,31 @@ output = Dense(int(28 * landmark_dim), activation='linear', name='output')(x)
 model = Model(inputs = [input_img, head_pose], outputs = [output])
 
 # Set optimizer and loss
-model.compile(optimizer = 'adam', loss={'output': 'mean_absolute_error'})
+model.compile(optimizer = 'adam', loss={'output': 'mean_squared_error'})
 
 model.summary()
 
 # Do the actual training
 history = model.fit(
           {'input_img': images_train, 'head_pose': head_pose_train},
-          {'output': ldmks_2d_train},
+          {'output': ldmks_3d_train},
           epochs = epochs, batch_size= batch_size,
-          validation_data = ({'input_img': images_test, 'head_pose': head_pose_test}, {'output': ldmks_2d_test})
+          validation_data = ({'input_img': images_test, 'head_pose': head_pose_test}, {'output': ldmks_3d_test})
           )
 
 # Plot the evolution of the loss over time
+plt.figure()
 plt.plot(history.history['loss'])
+plt.show()
 
 # Save the learned model
-model.save('landmark_cnn.h5')
+model.save('landmark_cnn_3d.h5')
 
 # Load the saved model
-model = load_model('landmark_cnn.h5', custom_objects={'p_norm_loss': p_norm_loss})
+model = load_model('landmark_cnn_3d.h5', custom_objects={'p_norm_loss': p_norm_loss})
 
 # Evaluate the model on the test data
-score = model.evaluate(({'input_img': images_test, 'head_pose': head_pose_test}), {'output': ldmks_2d_test}, verbose=0)
+score = model.evaluate(({'input_img': images_test, 'head_pose': head_pose_test}), {'output': ldmks_3d_test}, verbose=0)
 
 # Print the loss on the test data
 print('Test loss:', score)
