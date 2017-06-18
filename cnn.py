@@ -17,19 +17,12 @@ def p_norm_loss(y_true, y_pred):
 def landmark_accuracy(y_true, y_pred):
         return K.mean(K.abs(y_true - y_pred) < 3.)
 
-# Compile model
-def define_network_architecture(landmark_dim = 2, use_headpose = True, conv_type="non_spatial", double_tower=False, loss_function = 'mean_squared_error'):
+def landmark_loss(y_true, y_pred):
+    return K.mean( K.square(y_true - y_pred) * K.sigmoid( K.abs(y_true - y_pred) - 1 ), axis=-1)
 
-    print('Defining network architecture...')
+def get_non_spatial_tower(input_img):
 
-    # Define inputs for the network
-    input_img = Input(shape=(3, 80, 120), name='input_img')
-    head_pose = Input(shape=(9,), name='head_pose')
-
-    if conv_type == 'non_spatial':
-        data_format = 'channels_last'
-    else:
-        data_format = 'channels_first'
+    data_format = 'channels_last' # retarded convolutions
 
     # Apply upper part of the network by doing convolutions
     tower_1 = Conv2D(64, (3, 3), padding='same', activation='relu', data_format=data_format)(input_img)
@@ -37,26 +30,61 @@ def define_network_architecture(landmark_dim = 2, use_headpose = True, conv_type
     tower_1 = Conv2D(64, (3, 3), padding='same', activation='relu', data_format=data_format)(tower_1)
     tower_1 = MaxPooling2D((2, 2), strides=(1, 1))(tower_1)
     tower_1 = Conv2D(16, (3, 3), padding='same', activation='relu', data_format=data_format)(tower_1)
-    x = Flatten()(tower_1)
-    x = Dense(64, activation='relu')(x)
+    tower_1 = Flatten()(tower_1)
+    tower_1 = Dense(64, activation='relu')(tower_1)
 
-    if double_tower:
-        # Apply upper part of the network by doing convolutions
-        tower_2 = Conv2D(16, (3, 3), padding='valid', activation='relu', data_format = 'channels_first')(input_img)
-        tower_2 = MaxPooling2D((2, 2), strides=(2, 2))(tower_2)
-        tower_2 = Conv2D(16, (3, 3), padding='valid', activation='relu', data_format = 'channels_first')(tower_2)
-        tower_2 = MaxPooling2D((3, 3), strides=(3, 3))(tower_2)
-        tower_2 = Flatten()(tower_2)
+    return tower_1
 
-        # concatenate the output of the convolutions and the head_pose information
+def get_spatial_tower(input_img):
+
+    data_format = 'channels_first' # retarded convolutions
+
+    tower_2 = Conv2D(16, (3, 3), padding='valid', activation='relu', data_format = data_format)(input_img)
+    tower_2 = MaxPooling2D((2, 2), strides=(2, 2))(tower_2)
+    tower_2 = Conv2D(16, (3, 3), padding='valid', activation='relu', data_format = data_format)(tower_2)
+    tower_2 = MaxPooling2D((3, 3), strides=(3, 3))(tower_2)
+    tower_2 = Flatten()(tower_2)
+    tower_2 = Dense(64, activation='relu')(tower_2)
+
+    return tower_2
+
+# Compile model
+def define_network_architecture(landmark_dim = 2, use_headpose = True, topology= 'non_spatial', loss_function = 'mean_squared_error'):
+
+    print('Defining network architecture...')
+
+    # Define inputs for the network
+    input_img = Input(shape=(3, 80, 120), name='input_img')
+    inputs = [input_img]
+
+    # If appending headpose information
+    if use_headpose:
+        head_pose = Input(shape=(9,), name='head_pose')
+        inputs.append(head_pose)
+
+
+    # If using both spatial and non-spatial convs
+    if topology == 'double_tower':
+        non_spatial = get_non_spatial_tower(input_img) # left tower
+        spatial = get_spatial_tower(input_img) # right tower
+        
+        # concatenate the output of the convolutions, and the head_pose information (if necessary)
         if use_headpose:
-            x = keras.layers.concatenate([x, tower_2, head_pose], axis=1)
+            x = keras.layers.concatenate([non_spatial, spatial, head_pose], axis=1)
         else:
-            x = keras.layers.concatenate([x, tower_2], axis=1)
+            x = keras.layers.concatenate([non_spatial, spatial], axis=1)
 
-    elif use_headpose:
-        # concatenate the output of the convolutions and the head_pose information
-        x = keras.layers.concatenate([x, head_pose], axis=1)
+    else: # Single tower mode
+        if topology == 'non_spatial':
+            x = get_non_spatial_tower(input_img)
+
+        elif topology == 'spatial': 
+            x = get_spatial_tower(input_img)
+
+        if use_headpose:
+            # concatenate the output of the convolutions and the head_pose information
+            x = keras.layers.concatenate([x, head_pose], axis=1)
+
         
     # Pass the concatenated vector through a dense layer
     x = Dense(64, activation='relu')(x)
@@ -66,16 +94,20 @@ def define_network_architecture(landmark_dim = 2, use_headpose = True, conv_type
 
     # This model receives an input_img and a head_pose and returns output
     # which is the landmarks of the dimension given by landmark_dim
-    model = Model(inputs = [input_img, head_pose], outputs = [output])
+    model = Model(inputs = inputs, outputs = [output])
 
-    # Set optimizer and loss
+    # Parse loss function parameter
     if loss_function == 'p_norm_loss':
         loss_function = p_norm_loss
+    elif loss_function == 'landmark_loss':
+        loss_function = landmark_loss 
 
+    # Metric for evaluation
     metrics = []
-    if landmark_dim == 2: 
+    if landmark_dim == 2: # Only 2D
         metrics.append(landmark_accuracy)
 
+    # Compile model
     model.compile(optimizer = 'adam', loss={'output': loss_function}, metrics = metrics)
 
     return model
@@ -86,11 +118,11 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
     print('Training model %s' % save_name)
 
     delta = 1e-6
-    if use_early_stopping:
+    if not use_early_stopping:
         delta = 0
 
     # Early stopping delta < 1e-5
-    callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, min_delta=delta, verbose=1, mode='auto')]
+    callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, min_delta=delta, verbose=1, mode='auto')]
 
     # Do the actual training
     history = model.fit(
@@ -122,101 +154,37 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
 
 # Intiailize training parameters
 batch_size = 64
-epochs = 50
+epochs = 70
 
 # # Load data
 with open('all_data.pkl', 'rb') as f:
     images_train, images_test, ldmks_2d_train, ldmks_2d_test, ldmks_3d_train, ldmks_3d_test, head_pose_train, head_pose_test, look_vec_train, look_vec_test = pickle.load(f)
 
+
 # Run a grid of experiments
-for data_format in ['non_spatial']:
-    for double_tower in [False, True]:
-        for use_headpose in [True, False]: # whether to use headpose
-            for landmark_dim in [2,3]: # 2D or 3D prediction
-                for loss_function in ['mean_squared_error', 'mean_absolute_error', 'p_norm_loss']: # objective functions
-                    # File name for saving
-                    save_name = 'Head%s-Tower%s-%sD-%s-%s' % (str(use_headpose), str(double_tower), str(landmark_dim), loss_function, data_format)
+for topology in ['non_spatial', 'spatial', 'double_tower']:
+    for use_headpose in [True, False]: # whether to use headpose
+        for landmark_dim in [2,3]: # 2D or 3D prediction
+            for loss_function in ['landmark_loss', 'mean_squared_error', 'mean_absolute_error']: # objective functions
+                # File name for saving
+                save_name = 'Head%s-%s-%sD-%s' % (str(use_headpose), topology, str(landmark_dim), loss_function)
 
-                    # Get model
-                    model = define_network_architecture(landmark_dim, use_headpose, data_format, double_tower, loss_function)
+                # Get model
+                model = define_network_architecture(landmark_dim, use_headpose, topology, loss_function)
 
-                    model.summary()
+                model.summary()
 
-                    # Choose appropriate targets
-                    if landmark_dim == 2:
-                        landmarks_train = ldmks_2d_train
-                        landmarks_test = ldmks_2d_test
-                    else:
-                        landmarks_train = ldmks_3d_train
-                        landmarks_test = ldmks_3d_test
+                # Choose appropriate targets
+                if landmark_dim == 2:
+                    landmarks_train = ldmks_2d_train
+                    landmarks_test = ldmks_2d_test
+                else:
+                    landmarks_train = ldmks_3d_train
+                    landmarks_test = ldmks_3d_test
 
-                    # Use early stopping when using double tower architecture (spatial + non-spatial)
-                    use_early_stopping = double_tower
+                # Use early stopping when using double tower architecture (spatial + non-spatial)
+                use_early_stopping = True
 
-                    # Train model
-                    history, model = train_model(model, images_train, head_pose_train, landmarks_train, images_test, 
-                        head_pose_test, landmarks_test, batch_size = batch_size, epochs = epochs, save_name=save_name, use_early_stopping=use_early_stopping)
-
-
-# # Training parameters
-# batch_size = 32
-# epochs = 20
-# landmark_dim = 3
-
-# # Load data
-# with open('all_data.pkl', 'rb') as f:
-#     images_train, images_test, ldmks_2d_train, ldmks_2d_test, ldmks_3d_train, ldmks_3d_test, head_pose_train, head_pose_test, look_vec_train, look_vec_test = pickle.load(f)
-
-# # Define inputs for the network
-# input_img = Input(shape=(3, 80, 120), name='input_img')
-# head_pose = Input(shape=(9,), name='head_pose')
-
-# # Apply upper part of the network by doing convolutions
-# tower_1 = Conv2D(64, (3, 3), padding='same', activation='relu')(input_img)
-# tower_1 = MaxPooling2D((2, 2), strides=(1, 1))(tower_1)
-# tower_1 = Conv2D(64, (3, 3), padding='same', activation='relu')(tower_1)
-# tower_1 = MaxPooling2D((2, 2), strides=(1, 1))(tower_1)
-# tower_1 = Conv2D(16, (3, 3), padding='same', activation='relu')(tower_1)
-# tower_1 = Flatten()(tower_1)
-# tower_1 = Dense(64, activation='relu')(tower_1)
-
-# # concatenate the output of the convolutions and the head_pose information
-# x = keras.layers.concatenate([tower_1, head_pose], axis=1)
-
-# # Pass the concatenated vector through some dense layers
-# x = Dense(64, activation='relu')(x)
-# output = Dense(int(28 * landmark_dim), activation='linear', name='output')(x)
-
-# # This model receives an input_img and a head_pose and returns output
-# # which is the landmarks of the dimension given by landmark_dim
-# model = Model(inputs = [input_img, head_pose], outputs = [output])
-
-# # Set optimizer and loss
-# model.compile(optimizer = 'adam', loss={'output': 'mean_squared_error'})
-
-# model.summary()
-
-# # Do the actual training
-# history = model.fit(
-#           {'input_img': images_train, 'head_pose': head_pose_train},
-#           {'output': ldmks_3d_train},
-#           epochs = epochs, batch_size= batch_size,
-#           validation_data = ({'input_img': images_test, 'head_pose': head_pose_test}, {'output': ldmks_3d_test})
-#           )
-
-# # Plot the evolution of the loss over time
-# plt.figure()
-# plt.plot(history.history['loss'])
-# plt.show()
-
-# # Save the learned model
-# model.save('landmark_cnn_3d.h5')
-
-# # Load the saved model
-# model = load_model('landmark_cnn_3d.h5', custom_objects={'p_norm_loss': p_norm_loss})
-
-# # Evaluate the model on the test data
-# score = model.evaluate(({'input_img': images_test, 'head_pose': head_pose_test}), {'output': ldmks_3d_test}, verbose=0)
-
-# # Print the loss on the test data
-# print('Test loss:', score)
+                # Train model
+                history, model = train_model(model, images_train, head_pose_train, landmarks_train, images_test, 
+                    head_pose_test, landmarks_test, batch_size = batch_size, epochs = epochs, save_name=save_name, use_early_stopping=use_early_stopping)
