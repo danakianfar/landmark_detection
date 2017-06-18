@@ -79,12 +79,19 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
 
     print('Training model %s' % save_name)
 
+    # Early stopping delta < 1e-5
+    earlyStopping=keras.callbacks.EarlyStopping(monitor='val_loss', patience=0, min_delta=1e-5, verbose=1, mode='auto')
+
     # Do the actual training
     history = model.fit(
               {'input_img': images_train, 'head_pose': head_pose_train},
               {'output': landmarks_train},
               epochs = epochs, batch_size= batch_size,
-              validation_data = ({'input_img': images_test, 'head_pose': head_pose_test}, {'output': landmarks_test})).history
+              validation_data = ({'input_img': images_test, 'head_pose': head_pose_test}, {'output': landmarks_test}),
+              shuffle=True, 
+              verbose=1, 
+              callbacks=[earlyStopping]
+              ).history
 
     # Evaluate the model on the test data
     score = model.evaluate(({'input_img': images_test, 'head_pose': head_pose_test}), {'output': landmarks_test}, verbose=0)
@@ -118,7 +125,7 @@ for data_format in ['non_spatial']:
             for landmark_dim in [2,3]: # 2D or 3D prediction
                 for loss_function in ['mean_squared_error', 'mean_absolute_error', 'p_norm_loss']: # objective functions
                     # File name for saving
-                    save_name = 'H%s-%sD-%s-%s' % (str(use_headpose), str(landmark_dim), loss_function, data_format)
+                    save_name = 'Head%s-Tower%s-%sD-%s-%s' % (str(use_headpose), str(double_tower), str(landmark_dim), loss_function, data_format)
 
                     # Get model
                     model = define_network_architecture(landmark_dim, use_headpose, data_format, double_tower, loss_function)
@@ -133,12 +140,9 @@ for data_format in ['non_spatial']:
                         landmarks_train = ldmks_3d_train
                         landmarks_test = ldmks_3d_test
 
-                    earlyStopping=keras.callbacks.EarlyStopping(monitor='val_loss', patience=0, min_delta=1e-5, verbose=1, mode='auto')
-
                     # Train model
                     history, model = train_model(model, images_train, head_pose_train, landmarks_train, images_test, 
-                        head_pose_test, landmarks_test, batch_size = batch_size, epochs = epochs, save_name=save_name, 
-                        shuffle=True, verbose=1, callbacks=[earlyStopping])
+                        head_pose_test, landmarks_test, batch_size = batch_size, epochs = epochs, save_name=save_name)
 
 
 # # Training parameters
