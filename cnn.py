@@ -14,6 +14,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 def p_norm_loss(y_true, y_pred):
     return K.mean(K.pow(y_pred - y_true, 4), axis=-1)
 
+def landmark_accuracy(y_true, y_pred):
+        return K.mean(K.abs(y_true - y_pred) < 3.)
 
 # Compile model
 def define_network_architecture(landmark_dim = 2, use_headpose = True, conv_type="non_spatial", double_tower=False, loss_function = 'mean_squared_error'):
@@ -70,7 +72,11 @@ def define_network_architecture(landmark_dim = 2, use_headpose = True, conv_type
     if loss_function == 'p_norm_loss':
         loss_function = p_norm_loss
 
-    model.compile(optimizer = 'adam', loss={'output': loss_function})
+    metrics = []
+    if landmark_dim == 2: 
+        metrics.append(landmark_accuracy)
+
+    model.compile(optimizer = 'adam', loss={'output': loss_function}, metrics = metrics)
 
     return model
 
@@ -85,7 +91,6 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
 
     # Early stopping delta < 1e-5
     callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, min_delta=delta, verbose=1, mode='auto')]
-
 
     # Do the actual training
     history = model.fit(
@@ -105,9 +110,9 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
     print('Model %s \nTest loss: %s \n' % (save_name, score))
 
     # Save the learned model
-    model.save('models/%s-%.4f.h5' % (save_name, score))
+    model.save('models/%s-%s.h5' % (save_name, score))
 
-    with open('models/%s-%.4f.history' % (save_name, score), 'wb') as f:
+    with open('models/%s-%s.history' % (save_name, score), 'wb') as f:
         pickle.dump(history, f)
 
     return history, model
