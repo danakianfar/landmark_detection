@@ -104,7 +104,7 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
 
 
 # Intiailize training parameters
-batch_size = 32
+batch_size = 64
 epochs = 50
 
 # # Load data
@@ -133,10 +133,12 @@ for data_format in ['non_spatial']:
                         landmarks_train = ldmks_3d_train
                         landmarks_test = ldmks_3d_test
 
+                    earlyStopping=keras.callbacks.EarlyStopping(monitor='val_loss', patience=0, min_delta=1e-5, verbose=1, mode='auto')
 
                     # Train model
                     history, model = train_model(model, images_train, head_pose_train, landmarks_train, images_test, 
-                        head_pose_test, landmarks_test, batch_size = batch_size, epochs = epochs, save_name=save_name)
+                        head_pose_test, landmarks_test, batch_size = batch_size, epochs = epochs, save_name=save_name, 
+                        shuffle=True, verbose=1, callbacks=[earlyStopping])
 
 
 # # Training parameters
