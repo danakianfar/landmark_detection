@@ -79,11 +79,13 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
 
     print('Training model %s' % save_name)
 
-    # Early stopping delta < 1e-5
-    callbacks = []
-
+    delta = 1e-6
     if use_early_stopping:
-        callbacks.append(keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, min_delta=1e-6, verbose=1, mode='auto'))
+        delta = 0
+
+    # Early stopping delta < 1e-5
+    callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, min_delta=delta, verbose=1, mode='auto')]
+
 
     # Do the actual training
     history = model.fit(
@@ -93,7 +95,7 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
               validation_data = ({'input_img': images_test, 'head_pose': head_pose_test}, {'output': landmarks_test}),
               shuffle=True, 
               verbose=1, 
-              callbacks=[callbacks]
+              callbacks=callbacks
               ).history
 
     # Evaluate the model on the test data
