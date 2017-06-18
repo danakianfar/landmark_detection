@@ -2,6 +2,7 @@ data/
 all_data.pkl
 *.h5
 *.history
+models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
