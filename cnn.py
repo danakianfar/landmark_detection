@@ -75,12 +75,15 @@ def define_network_architecture(landmark_dim = 2, use_headpose = True, conv_type
     return model
 
 def train_model(model, images_train, head_pose_train, landmarks_train, 
-    images_test, head_pose_test, landmarks_test, batch_size = 32, epochs = 30, save_name='landmark_unnamed'):
+    images_test, head_pose_test, landmarks_test, batch_size = 32, epochs = 30, save_name='landmark_unnamed', use_early_stopping=True):
 
     print('Training model %s' % save_name)
 
     # Early stopping delta < 1e-5
-    earlyStopping=keras.callbacks.EarlyStopping(monitor='val_loss', patience=0, min_delta=1e-5, verbose=1, mode='auto')
+    callbacks = []
+
+    if use_early_stopping:
+        callbacks.append(keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, min_delta=1e-6, verbose=1, mode='auto'))
 
     # Do the actual training
     history = model.fit(
@@ -90,7 +93,7 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
               validation_data = ({'input_img': images_test, 'head_pose': head_pose_test}, {'output': landmarks_test}),
               shuffle=True, 
               verbose=1, 
-              callbacks=[earlyStopping]
+              callbacks=[callbacks]
               ).history
 
     # Evaluate the model on the test data
@@ -140,9 +143,12 @@ for data_format in ['non_spatial']:
                         landmarks_train = ldmks_3d_train
                         landmarks_test = ldmks_3d_test
 
+                    # Use early stopping when using double tower architecture (spatial + non-spatial)
+                    use_early_stopping = double_tower
+
                     # Train model
                     history, model = train_model(model, images_train, head_pose_train, landmarks_train, images_test, 
-                        head_pose_test, landmarks_test, batch_size = batch_size, epochs = epochs, save_name=save_name)
+                        head_pose_test, landmarks_test, batch_size = batch_size, epochs = epochs, save_name=save_name, use_early_stopping=use_early_stopping)
 
 
 # # Training parameters
