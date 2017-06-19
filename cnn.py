@@ -17,6 +17,9 @@ def p_norm_loss(y_true, y_pred):
 def landmark_accuracy(y_true, y_pred):
         return K.mean(K.abs(y_true - y_pred) < 3.)
 
+def landmark_accuracy_5(y_true, y_pred):
+        return K.mean(K.abs(y_true - y_pred) < 5.)
+
 def landmark_loss(y_true, y_pred):
     return K.mean( K.square(y_true - y_pred) * K.sigmoid( K.abs(y_true - y_pred) - 1 ), axis=-1)
 
@@ -105,10 +108,11 @@ def define_network_architecture(landmark_dim = 2, use_headpose = True, topology=
     # Metric for evaluation
     metrics = []
     if landmark_dim == 2: # Only 2D
-        metrics.append(landmark_accuracy)
+        metrics.extend([landmark_accuracy])
 
     # Compile model
-    model.compile(optimizer = 'adam', loss={'output': loss_function}, metrics = metrics)
+    adam = keras.optimizers.Adam(lr=1e-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=1e-5)
+    model.compile(optimizer = adam, loss={'output': loss_function}, metrics = metrics)
 
     return model
 
@@ -154,7 +158,7 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
 
 # Intiailize training parameters
 batch_size = 64
-epochs = 70
+epochs = 100
 
 # # Load data
 with open('all_data.pkl', 'rb') as f:
@@ -162,10 +166,10 @@ with open('all_data.pkl', 'rb') as f:
 
 
 # Run a grid of experiments
-for topology in ['non_spatial', 'spatial', 'double_tower']:
-    for use_headpose in [True, False]: # whether to use headpose
-        for landmark_dim in [2,3]: # 2D or 3D prediction
-            for loss_function in ['landmark_loss', 'mean_squared_error', 'mean_absolute_error']: # objective functions
+for topology in ['double_tower']:
+    for use_headpose in [True]: # whether to use headpose
+        for landmark_dim in [2]: # 2D or 3D prediction
+            for loss_function in ['landmark_loss']: # objective functions
                 # File name for saving
                 save_name = 'Head%s-%s-%sD-%s' % (str(use_headpose), topology, str(landmark_dim), loss_function)
 
