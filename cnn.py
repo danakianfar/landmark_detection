@@ -15,10 +15,13 @@ def p_norm_loss(y_true, y_pred):
     return K.mean(K.pow(y_pred - y_true, 4), axis=-1)
 
 def landmark_accuracy(y_true, y_pred):
-        return K.mean(K.abs(y_true - y_pred) < 3.)
+    y_true = K.reshape(y_true, (-1, 28, 2))
+    y_pred = K.reshape(y_pred, (-1, 28, 2))
+
+    return K.mean( K.sum (K.abs(y_true - y_pred), axis=2) < 5.)
 
 def landmark_accuracy_5(y_true, y_pred):
-        return K.mean(K.abs(y_true - y_pred) < 5.)
+    return K.mean(K.abs(y_true - y_pred) < 5.)
 
 def landmark_loss(y_true, y_pred):
     return K.mean( K.square(y_true - y_pred) * K.sigmoid( K.abs(y_true - y_pred) - 1 ), axis=-1)
@@ -158,7 +161,7 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
 
 # Intiailize training parameters
 batch_size = 64
-epochs = 100
+epochs = 70
 
 # # Load data
 with open('all_data.pkl', 'rb') as f:
@@ -166,10 +169,10 @@ with open('all_data.pkl', 'rb') as f:
 
 
 # Run a grid of experiments
-for topology in ['double_tower']:
-    for use_headpose in [True]: # whether to use headpose
+for topology in ['double_tower', 'non_spatial', 'spatial']:
+    for use_headpose in [True, False]: # whether to use headpose
         for landmark_dim in [2]: # 2D or 3D prediction
-            for loss_function in ['landmark_loss']: # objective functions
+            for loss_function in ['landmark_loss', 'mean_square_error', 'mean_absolute_error']: # objective functions
                 # File name for saving
                 save_name = 'Head%s-%s-%sD-%s' % (str(use_headpose), topology, str(landmark_dim), loss_function)
 
