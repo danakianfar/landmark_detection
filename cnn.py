@@ -172,7 +172,7 @@ with open('all_data.pkl', 'rb') as f:
 for topology in ['double_tower', 'non_spatial', 'spatial']:
     for use_headpose in [True, False]: # whether to use headpose
         for landmark_dim in [2]: # 2D or 3D prediction
-            for loss_function in ['landmark_loss', 'mean_square_error', 'mean_absolute_error']: # objective functions
+            for loss_function in ['mean_squared_error', 'landmark_loss', 'mean_absolute_error']: # objective functions
                 # File name for saving
                 save_name = 'Head%s-%s-%sD-%s' % (str(use_headpose), topology, str(landmark_dim), loss_function)
 
