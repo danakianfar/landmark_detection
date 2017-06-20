@@ -164,34 +164,34 @@ batch_size = 64
 epochs = 70
 
 # # Load data
-with open('all_data.pkl', 'rb') as f:
-    images_train, images_test, ldmks_2d_train, ldmks_2d_test, ldmks_3d_train, ldmks_3d_test, head_pose_train, head_pose_test, look_vec_train, look_vec_test = pickle.load(f)
+with open('all_data_augmented.pkl', 'rb') as f:
+    images_train, images_test, ldmks_2d_train, ldmks_2d_test, augmented_images_train, augmented_images_test, augmented_ldmks_2d_train, augmented_ldmks_2d_test, ldmks_3d_train, ldmks_3d_test, head_pose_train, head_pose_test, look_vec_train, look_vec_test = pickle.load(f)
 
+X_train = np.vstack((images_train, augmented_images_train))
+X_test = np.vstack((images_test, augmented_images_test))
+
+head_pose_train = np.vstack((head_pose_train, head_pose_train))
+head_pose_test = np.vstack((head_pose_test, head_pose_test))
+
+Y_train = np.vstack((ldmks_2d_train, augmented_ldmks_2d_train))
+Y_test = np.vstack((ldmks_2d_test, augmented_ldmks_2d_test))
 
 # Run a grid of experiments
-for topology in ['double_tower', 'non_spatial', 'spatial']:
-    for use_headpose in [True, False]: # whether to use headpose
+for topology in ['non_spatial', 'double_tower', 'spatial']:
+    for use_headpose in [True]: # whether to use headpose
         for landmark_dim in [2]: # 2D or 3D prediction
             for loss_function in ['mean_squared_error', 'landmark_loss', 'mean_absolute_error']: # objective functions
                 # File name for saving
-                save_name = 'Head%s-%s-%sD-%s' % (str(use_headpose), topology, str(landmark_dim), loss_function)
+                save_name = 'AugmentedHead%s-%s-%sD-%s' % (str(use_headpose), topology, str(landmark_dim), loss_function)
 
                 # Get model
                 model = define_network_architecture(landmark_dim, use_headpose, topology, loss_function)
 
                 model.summary()
 
-                # Choose appropriate targets
-                if landmark_dim == 2:
-                    landmarks_train = ldmks_2d_train
-                    landmarks_test = ldmks_2d_test
-                else:
-                    landmarks_train = ldmks_3d_train
-                    landmarks_test = ldmks_3d_test
-
                 # Use early stopping when using double tower architecture (spatial + non-spatial)
                 use_early_stopping = True
 
                 # Train model
-                history, model = train_model(model, images_train, head_pose_train, landmarks_train, images_test, 
-                    head_pose_test, landmarks_test, batch_size = batch_size, epochs = epochs, save_name=save_name, use_early_stopping=use_early_stopping)
+                history, model = train_model(model, X_train, head_pose_train, Y_train, X_test, 
+                    head_pose_test, Y_test, batch_size = batch_size, epochs = epochs, save_name=save_name, use_early_stopping=use_early_stopping)
