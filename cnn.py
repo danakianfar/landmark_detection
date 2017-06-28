@@ -43,14 +43,19 @@ def get_non_spatial_tower(input_img):
 
 def get_spatial_tower(input_img):
 
-    data_format = 'channels_first' # retarded convolutions
+    data_format = 'channels_first' #
 
-    tower_2 = Conv2D(32, (3, 3), padding='valid', activation='relu', data_format = data_format)(input_img)
-    tower_2 = MaxPooling2D((2, 2), strides=(2, 2))(tower_2)
-    tower_2 = Conv2D(16, (3, 3), padding='valid', activation='relu', data_format = data_format)(tower_2)
-    tower_2 = MaxPooling2D((3, 3), strides=(3, 3))(tower_2)
+    tower_2 = MaxPooling2D((2, 2), strides=(2, 2), name='spatial_pool0', data_format=data_format)(input_img)
+    tower_2 = Conv2D(32, (3, 3), padding='same', activation='relu', name='spatial_conv1', data_format = data_format)(tower_2)
+    tower_2 = MaxPooling2D((2, 2), strides=(2, 2), name='spatial_pool1', data_format = data_format)(tower_2)
+    tower_2 = Conv2D(32, (3, 3), padding='same', activation='relu', name='spatial_conv2', data_format = data_format)(tower_2)
+    tower_2 = MaxPooling2D((2, 2), strides=(2, 2), name='spatial_pool2', data_format = data_format)(tower_2)
+    # tower_2 = Conv2D(32, (2, 2), padding='same', activation='relu', name='spatial_conv3', data_format = data_format)(tower_2)
+    # tower_2 = MaxPooling2D((2, 2), strides=(2, 2), name='spatial_pool3', data_format = data_format)(tower_2)
+    # tower_2 = Conv2D(64, (5, 5), padding='same', activation='relu', name='spatial_conv4', data_format = data_format)(tower_2)
+    # tower_2 = MaxPooling2D((2, 2), strides=(2, 2), name='spatial_pool4', data_format=data_format)(tower_2)
     tower_2 = Flatten()(tower_2)
-    tower_2 = Dense(64, activation='relu')(tower_2)
+    tower_2 = Dense(32, activation='relu')(tower_2)
 
     return tower_2
 
@@ -93,7 +98,7 @@ def define_network_architecture(landmark_dim = 2, use_headpose = True, topology=
 
         
     # Pass the concatenated vector through a dense layer
-    x = Dense(64, activation='relu')(x)
+    x = Dense(32, activation='relu')(x)
     
     # Output
     output = Dense(int(28 * landmark_dim), activation='linear', name='output')(x)
@@ -161,59 +166,66 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
 
 # Intiailize training parameters
 batch_size = 32
-epochs = 120
+epochs = 100
 
 # # Load data
 with open('all_data_augmented.pkl', 'rb') as f:
     images_train, images_test, ldmks_2d_train, ldmks_2d_test, augmented_images_train, augmented_images_test, augmented_ldmks_2d_train, augmented_ldmks_2d_test, ldmks_3d_train, ldmks_3d_test, head_pose_train, head_pose_test, look_vec_train, look_vec_test = pickle.load(f)
 
-# num_original_samples = 2000
+# num_original_samples = len(images_train)
 # rand_idx = np.random.choice(len(images_train), num_original_samples)
 
-# X_train = np.vstack((images_train[rand_idx, :, :, :], augmented_images_train))
-# X_test = np.vstack((images_test, augmented_images_test))
+X_train = np.vstack((images_train, augmented_images_train))
+X_test = np.vstack((images_test, augmented_images_test))
 
-# head_pose_train = np.vstack((head_pose_train[rand_idx, :], head_pose_train))
-# head_pose_test = np.vstack((head_pose_test, head_pose_test))
+Y_train = np.vstack((ldmks_2d_train, augmented_ldmks_2d_train))
+Y_test = np.vstack((ldmks_2d_test, augmented_ldmks_2d_test))
 
-# Y_train = np.vstack((ldmks_2d_train[rand_idx, :], augmented_ldmks_2d_train))
-# Y_test = np.vstack((ldmks_2d_test, augmented_ldmks_2d_test))
+head_pose_train = np.vstack((head_pose_train, head_pose_train))
+head_pose_test = np.vstack((head_pose_test, head_pose_test))
 
-# Run a grid of experiments
-# for topology in ['spatial',  'double_tower' ]:
-#     for use_headpose in [True]: # whether to use headpose
-#         for landmark_dim in [2]: # 2D or 3D prediction
-#             for loss_function in ['landmark_loss', 'mean_squared_error', 'mean_absolute_error']: # objective functions
-#                 # File name for saving
-#                 save_name = 'AugmentedHead%s-%s-%sD-%s' % (str(use_headpose), topology, str(landmark_dim), loss_function)
+## Run a grid of experiments
+for topology in ['spatial' ]:
+    for use_headpose in [False]: # whether to use headpose
+        for landmark_dim in [2]: # 2D or 3D prediction
+            for loss_function in ['landmark_loss']: # objective functions
+                # File name for saving
+                save_name = 'AugmentedHead%s-%s-%sD-%s' % (str(use_headpose), topology, str(landmark_dim), loss_function)
 
-#                 # Get model
-#                 model = define_network_architecture(landmark_dim, use_headpose, topology, loss_function)
+                # Get model
+                model = define_network_architecture(landmark_dim, use_headpose, topology, loss_function)
 
-#                 model.summary()
+                model.summary()
 
-#                 # Use early stopping when using double tower architecture (spatial + non-spatial)
-#                 use_early_stopping = True
+                # Use early stopping when using double tower architecture (spatial + non-spatial)
+                use_early_stopping = True
 
-#                 # Train model
-#                 history, model = train_model(model, X_train, head_pose_train, Y_train, X_test, 
+                # Train model
+                history, model = train_model(model, X_train, head_pose_train, Y_train, X_test, 
+                    head_pose_test, Y_test, batch_size = batch_size, epochs = epochs, save_name=save_name, use_early_stopping=use_early_stopping)
+
+
+# batch_size = 32
+# epochs = 50
+
+# custom_objects={'p_norm_loss': p_norm_loss, 'landmark_accuracy' : landmark_accuracy, 'landmark_loss': landmark_loss}
+
+
+# # Train pre-loaded model
+# path = 'models/AugmentedHeadFalse-double_tower-2D-mean_squared_error-[5.1912007235517406, 0.81428417525482011].h5'
+# model = keras.models.load_model(path, custom_objects)
+# save_name = 'AugmentedHeadFalse-double_tower-2D-mean_squared_error'
+
+# # Reset weights
+# # weights = model.get_weights()
+# # weights = [np.random.permutation(w.flat).reshape(w.shape) for w in weights]
+# # # Faster, but less random: only permutes along the first dimension
+# # # weights = [np.random.permutation(w) for w in weights]
+# # model.set_weights(weights)
+
+# use_early_stopping = True
+
+# # Train model
+# history, model = train_model(model, X_train, head_pose_train, Y_train, X_test, 
 #                     head_pose_test, Y_test, batch_size = batch_size, epochs = epochs, save_name=save_name, use_early_stopping=use_early_stopping)
 
-
-batch_size = 32
-epochs = 150
-
-custom_objects={'p_norm_loss': p_norm_loss, 'landmark_accuracy' : landmark_accuracy, 'landmark_loss': landmark_loss}
-
-
-# Train pre-loaded model
-path = 'models/HeadTrue-non_spatial-2D-mean_squared_error-[4.094210516846279, 0.85919759715393962].h5'
-model = keras.models.load_model(path, custom_objects)
-save_name = 'HeadTrue-non_spatial-2D-mean_squared_error-augmentedtransfer'
-
-use_early_stopping = True
-
-# Train model
-history, model = train_model(model, augmented_images_train, head_pose_train, augmented_ldmks_2d_train, \
-    augmented_images_test, head_pose_test, augmented_ldmks_2d_test, \
-    batch_size = batch_size, epochs = epochs, save_name=save_name, use_early_stopping=use_early_stopping)
