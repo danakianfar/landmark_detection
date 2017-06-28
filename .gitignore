@@ -4,6 +4,7 @@ all_data.pkl
 *.history
 models/
 all_data_augmented.pkl
+*.pkl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
