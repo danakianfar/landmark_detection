@@ -24,7 +24,7 @@ def landmark_accuracy_5(y_true, y_pred):
     return K.mean(K.abs(y_true - y_pred) < 5.)
 
 def landmark_loss(y_true, y_pred):
-    return K.mean( K.square(y_true - y_pred) * K.sigmoid( K.abs(y_true - y_pred) - 1 ), axis=-1)
+    return K.mean( K.square(y_true - y_pred) * K.sigmoid( 5 * (K.abs(y_true - y_pred) - 1) ), axis=-1)
 
 def get_non_spatial_tower(input_img):
 
@@ -119,7 +119,7 @@ def define_network_architecture(landmark_dim = 2, use_headpose = True, topology=
         metrics.extend([landmark_accuracy])
 
     # Compile model
-    adam = keras.optimizers.Adam(lr=1e-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=1e-5)
+    adam = keras.optimizers.Adam(lr=e5-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=1e-5)
     model.compile(optimizer = adam, loss={'output': loss_function}, metrics = metrics)
 
     return model
@@ -174,24 +174,24 @@ with open('all_data_augmented_bw.pkl', 'rb') as f:
 
 # num_original_samples = len(images_train)
 # rand_idx = np.random.choice(len(images_train), num_original_samples)
-# X_train = np.vstack((images_train, augmented_images_train))
-# X_test = np.vstack((images_test, augmented_images_test))
+X_train = np.vstack((images_train, augmented_images_train))
+X_test = np.vstack((images_test, augmented_images_test))
 
-# Y_train = np.vstack((ldmks_2d_train, augmented_ldmks_2d_train))
-# Y_test = np.vstack((ldmks_2d_test, augmented_ldmks_2d_test))
+Y_train = np.vstack((ldmks_2d_train, augmented_ldmks_2d_train))
+Y_test = np.vstack((ldmks_2d_test, augmented_ldmks_2d_test))
 
-X_train = images_train
-X_test = images_test
+# X_train = images_train
+# X_test = images_test
 
-Y_train = ldmks_3d_train
-Y_test = ldmks_3d_test
+# Y_train = ldmks_3d_train
+# Y_test = ldmks_3d_test
 
 
 # Run a grid of experiments
 for topology in ['spatial' ]:
     for use_headpose in [False]: # whether to use headpose
-        for landmark_dim in [3]: # 2D or 3D prediction
-            for loss_function in ['mean_squared_error']: # objective functions
+        for landmark_dim in [2]: # 2D or 3D prediction
+            for loss_function in ['landmark_loss']: # objective functions
                 # File name for saving
                 save_name = 'Head%s-%s-%sD-%s' % (str(use_headpose), topology, str(landmark_dim), loss_function)
 
