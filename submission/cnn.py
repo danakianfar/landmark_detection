@@ -24,7 +24,7 @@ def landmark_accuracy_5(y_true, y_pred):
     return K.mean(K.abs(y_true - y_pred) < 5.)
 
 def landmark_loss(y_true, y_pred):
-    return K.mean( K.square(y_true - y_pred) * K.sigmoid( K.abs(y_true - y_pred) - 1 ), axis=-1)
+    return K.mean( K.square(y_true - y_pred) * K.sigmoid( 5 * (K.abs(y_true - y_pred) - 1) ), axis=-1)
 
 def get_non_spatial_tower(input_img):
 
@@ -96,12 +96,9 @@ def define_network_architecture(landmark_dim = 2, use_headpose = True, topology=
             # concatenate the output of the convolutions and the head_pose information
             x = keras.layers.concatenate([x, head_pose], axis=1)
 
-        
-    # Pass the concatenated vector through a dense layer
-    # x = Dense(32, activation='relu')(x)
     
     # Output
-    output = Dense(3, activation='linear', name='output')(x)
+    output = Dense(int(28 * landmark_dim), activation='linear', name='output')(x)
 
     # This model receives an input_img and a head_pose and returns output
     # which is the landmarks of the dimension given by landmark_dim
@@ -115,11 +112,11 @@ def define_network_architecture(landmark_dim = 2, use_headpose = True, topology=
 
     # Metric for evaluation
     metrics = []
-    # if landmark_dim == 2: # Only 2D
-    #     metrics.extend([landmark_accuracy])
+    if landmark_dim == 2: # Only 2D
+        metrics.extend([landmark_accuracy])
 
     # Compile model
-    adam = keras.optimizers.Adam(lr=1e-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=1e-5)
+    adam = keras.optimizers.Adam(lr=e5-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=1e-5)
     model.compile(optimizer = adam, loss={'output': loss_function}, metrics = metrics)
 
     return model
@@ -154,9 +151,9 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
     print('Model %s \nTest loss: %s \n' % (save_name, score))
 
     # Save the learned model
-    model.save('models/gaze/%s-%s.h5' % (save_name, score))
+    model.save('models/bw/%s-%s.h5' % (save_name, score))
 
-    with open('models/gaze/%s-%s.history' % (save_name, score), 'wb') as f:
+    with open('models/bw/%s-%s.history' % (save_name, score), 'wb') as f:
         pickle.dump(history, f)
 
     return history, model
@@ -172,26 +169,20 @@ epochs = 100
 with open('all_data_augmented_bw.pkl', 'rb') as f:
     images_train, images_test, ldmks_2d_train, ldmks_2d_test, augmented_images_train, augmented_images_test, augmented_ldmks_2d_train, augmented_ldmks_2d_test, ldmks_3d_train, ldmks_3d_test, head_pose_train, head_pose_test, look_vec_train, look_vec_test = pickle.load(f)
 
-# num_original_samples = len(images_train)
-# rand_idx = np.random.choice(len(images_train), num_original_samples)
-# X_train = np.vstack((images_train, augmented_images_train))
-# X_test = np.vstack((images_test, augmented_images_test))
 
-# Y_train = np.vstack((ldmks_2d_train, augmented_ldmks_2d_train))
-# Y_test = np.vstack((ldmks_2d_test, augmented_ldmks_2d_test))
+# Prepare training data
+X_train = np.vstack((images_train, augmented_images_train))
+X_test = np.vstack((images_test, augmented_images_test))
 
-X_train = images_train
-X_test = images_test
-
-Y_train = look_vec_train
-Y_test = look_vec_test
+Y_train = np.vstack((ldmks_2d_train, augmented_ldmks_2d_train))
+Y_test = np.vstack((ldmks_2d_test, augmented_ldmks_2d_test))
 
 
 # Run a grid of experiments
 for topology in ['spatial' ]:
     for use_headpose in [False]: # whether to use headpose
         for landmark_dim in [2]: # 2D or 3D prediction
-            for loss_function in ['mean_squared_error']: # objective functions
+            for loss_function in ['landmark_loss']: # objective functions
                 # File name for saving
                 save_name = 'Head%s-%s-%sD-%s' % (str(use_headpose), topology, str(landmark_dim), loss_function)
 
@@ -206,29 +197,3 @@ for topology in ['spatial' ]:
                 # Train model
                 history, model = train_model(model, X_train, head_pose_train, Y_train, X_test, 
                     head_pose_test, Y_test, batch_size = batch_size, epochs = epochs, save_name=save_name, use_early_stopping=use_early_stopping)
-
-
-# batch_size = 32
-# epochs = 1
-
-# custom_objects={'p_norm_loss': p_norm_loss, 'landmark_accuracy' : landmark_accuracy, 'landmark_loss': landmark_loss}
-
-
-# # Train pre-loaded model
-# path = 'models/bw/HeadFalse-spatial-2D-mean_squared_error-[3.1770277053680553, 0.90926347746888847].h5'
-# model = keras.models.load_model(path, custom_objects)
-# save_name = 'HeadFalse-spatial-2D-mean_squared_error'
-
-# # Reset weights
-# # weights = model.get_weights()
-# # weights = [np.random.permutation(w.flat).reshape(w.shape) for w in weights]
-# # # Faster, but less random: only permutes along the first dimension
-# # # weights = [np.random.permutation(w) for w in weights]
-# # model.set_weights(weights)
-
-# use_early_stopping = True
-
-# # Train model
-# history, model = train_model(model, X_train, head_pose_train, Y_train, X_test, 
-#                     head_pose_test, Y_test, batch_size = batch_size, epochs = epochs, save_name=save_name, use_early_stopping=use_early_stopping)
-

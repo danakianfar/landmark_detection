@@ -24,7 +24,7 @@ def landmark_accuracy_5(y_true, y_pred):
     return K.mean(K.abs(y_true - y_pred) < 5.)
 
 def landmark_loss(y_true, y_pred):
-    return K.mean( K.square(y_true - y_pred) * K.sigmoid( 5 * (K.abs(y_true - y_pred) - 1) ), axis=-1)
+    return K.mean( K.square(y_true - y_pred) * K.sigmoid( K.abs(y_true - y_pred) - 1 ), axis=-1)
 
 def get_non_spatial_tower(input_img):
 
@@ -46,16 +46,16 @@ def get_spatial_tower(input_img):
     data_format = 'channels_first' #
 
     tower_2 = MaxPooling2D((2, 2), strides=(2, 2), name='spatial_pool0', data_format=data_format)(input_img)
-    tower_2 = Conv2D(16, (5, 5), padding='same', activation='relu', name='spatial_conv1', data_format = data_format)(tower_2)
+    tower_2 = Conv2D(32, (3, 3), padding='same', activation='relu', name='spatial_conv1', data_format = data_format)(tower_2)
     tower_2 = MaxPooling2D((2, 2), strides=(2, 2), name='spatial_pool1', data_format = data_format)(tower_2)
-    tower_2 = Conv2D(48, (3, 3), padding='same', activation='relu', name='spatial_conv2', data_format = data_format)(tower_2)
+    tower_2 = Conv2D(32, (3, 3), padding='same', activation='relu', name='spatial_conv2', data_format = data_format)(tower_2)
     tower_2 = MaxPooling2D((2, 2), strides=(2, 2), name='spatial_pool2', data_format = data_format)(tower_2)
-    tower_2 = Conv2D(64, (3, 3), padding='same', activation='relu', name='spatial_conv3', data_format = data_format)(tower_2)
-    tower_2 = MaxPooling2D((2, 2), strides=(2, 2), name='spatial_pool3', data_format = data_format)(tower_2)
-    tower_2 = Conv2D(64, (3, 3), padding='valid', activation='relu', name='spatial_conv4', data_format = data_format)(tower_2)
+    # tower_2 = Conv2D(32, (2, 2), padding='same', activation='relu', name='spatial_conv3', data_format = data_format)(tower_2)
+    # tower_2 = MaxPooling2D((2, 2), strides=(2, 2), name='spatial_pool3', data_format = data_format)(tower_2)
+    # tower_2 = Conv2D(64, (5, 5), padding='same', activation='relu', name='spatial_conv4', data_format = data_format)(tower_2)
     # tower_2 = MaxPooling2D((2, 2), strides=(2, 2), name='spatial_pool4', data_format=data_format)(tower_2)
     tower_2 = Flatten()(tower_2)
-    tower_2 = Dense(64, activation='relu')(tower_2)
+    tower_2 = Dense(32, activation='relu')(tower_2)
 
     return tower_2
 
@@ -65,7 +65,7 @@ def define_network_architecture(landmark_dim = 2, use_headpose = True, topology=
     print('Defining network architecture...')
 
     # Define inputs for the network
-    input_img = Input(shape=(1, 80, 120), name='input_img')
+    input_img = Input(shape=(3, 80, 120), name='input_img')
     inputs = [input_img]
 
     # If appending headpose information
@@ -98,7 +98,7 @@ def define_network_architecture(landmark_dim = 2, use_headpose = True, topology=
 
         
     # Pass the concatenated vector through a dense layer
-    # x = Dense(32, activation='relu')(x)
+    x = Dense(32, activation='relu')(x)
     
     # Output
     output = Dense(int(28 * landmark_dim), activation='linear', name='output')(x)
@@ -119,7 +119,7 @@ def define_network_architecture(landmark_dim = 2, use_headpose = True, topology=
         metrics.extend([landmark_accuracy])
 
     # Compile model
-    adam = keras.optimizers.Adam(lr=e5-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=1e-5)
+    adam = keras.optimizers.Adam(lr=1e-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=1e-5)
     model.compile(optimizer = adam, loss={'output': loss_function}, metrics = metrics)
 
     return model
@@ -154,9 +154,9 @@ def train_model(model, images_train, head_pose_train, landmarks_train,
     print('Model %s \nTest loss: %s \n' % (save_name, score))
 
     # Save the learned model
-    model.save('models/bw/%s-%s.h5' % (save_name, score))
+    model.save('models/%s-%s.h5' % (save_name, score))
 
-    with open('models/bw/%s-%s.history' % (save_name, score), 'wb') as f:
+    with open('models/%s-%s.history' % (save_name, score), 'wb') as f:
         pickle.dump(history, f)
 
     return history, model
@@ -169,31 +169,28 @@ batch_size = 32
 epochs = 100
 
 # # Load data
-with open('all_data_augmented_bw.pkl', 'rb') as f:
+with open('all_data_augmented.pkl', 'rb') as f:
     images_train, images_test, ldmks_2d_train, ldmks_2d_test, augmented_images_train, augmented_images_test, augmented_ldmks_2d_train, augmented_ldmks_2d_test, ldmks_3d_train, ldmks_3d_test, head_pose_train, head_pose_test, look_vec_train, look_vec_test = pickle.load(f)
 
 # num_original_samples = len(images_train)
 # rand_idx = np.random.choice(len(images_train), num_original_samples)
+
 X_train = np.vstack((images_train, augmented_images_train))
 X_test = np.vstack((images_test, augmented_images_test))
 
 Y_train = np.vstack((ldmks_2d_train, augmented_ldmks_2d_train))
 Y_test = np.vstack((ldmks_2d_test, augmented_ldmks_2d_test))
 
-# X_train = images_train
-# X_test = images_test
+head_pose_train = np.vstack((head_pose_train, head_pose_train))
+head_pose_test = np.vstack((head_pose_test, head_pose_test))
 
-# Y_train = ldmks_3d_train
-# Y_test = ldmks_3d_test
-
-
-# Run a grid of experiments
+## Run a grid of experiments
 for topology in ['spatial' ]:
     for use_headpose in [False]: # whether to use headpose
         for landmark_dim in [2]: # 2D or 3D prediction
             for loss_function in ['landmark_loss']: # objective functions
                 # File name for saving
-                save_name = 'Head%s-%s-%sD-%s' % (str(use_headpose), topology, str(landmark_dim), loss_function)
+                save_name = 'AugmentedHead%s-%s-%sD-%s' % (str(use_headpose), topology, str(landmark_dim), loss_function)
 
                 # Get model
                 model = define_network_architecture(landmark_dim, use_headpose, topology, loss_function)
@@ -209,15 +206,15 @@ for topology in ['spatial' ]:
 
 
 # batch_size = 32
-# epochs = 1
+# epochs = 50
 
 # custom_objects={'p_norm_loss': p_norm_loss, 'landmark_accuracy' : landmark_accuracy, 'landmark_loss': landmark_loss}
 
 
 # # Train pre-loaded model
-# path = 'models/bw/HeadFalse-spatial-2D-mean_squared_error-[3.1770277053680553, 0.90926347746888847].h5'
+# path = 'models/AugmentedHeadFalse-double_tower-2D-mean_squared_error-[5.1912007235517406, 0.81428417525482011].h5'
 # model = keras.models.load_model(path, custom_objects)
-# save_name = 'HeadFalse-spatial-2D-mean_squared_error'
+# save_name = 'AugmentedHeadFalse-double_tower-2D-mean_squared_error'
 
 # # Reset weights
 # # weights = model.get_weights()
