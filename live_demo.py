@@ -10,7 +10,8 @@ model_path = 'models/HeadFalse-spatial-2D-mean_squared_error-2.841274347020494-0
 model = load_model(model_path, custom_objects)
 
 # Load OpenCV classifiers
-path = '/home/jgalle29/anaconda3/share/OpenCV/haarcascades/'
+
+path = './opencv_classifiers/'
 face_cascade = cv2.CascadeClassifier(path + 'haarcascade_frontalface_default.xml')
 eye_cascade = cv2.CascadeClassifier(path + 'haarcascade_eye.xml')
 
