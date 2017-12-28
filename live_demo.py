@@ -21,7 +21,7 @@ while(True):
     ret, frame = cap.read()
 
     # Or use specific image
-    # frame = cv2.imread('Screen-shot-2010-04-22-at-10.07.43-AM_6.png')
+    #frame = cv2.imread('face.jpg')
 
     # Our operations on the frame come here
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -32,7 +32,7 @@ while(True):
     for (x,y,w,h) in faces:
 
         # Plot a box around the face
-        cv2.rectangle(frame,(x,y),(x+w,y+h),(255,0,0),1)
+        cv2.rectangle(frame,(x,y),(x+w,y+h),(255,0,0),2)
 
         # Get the gray and color regions of interest
         roi_gray = gray[y:y+h, x:x+w]
@@ -69,12 +69,12 @@ while(True):
             ldmarks = (ldmarks * np.array([eh/120., ew/80.])) + np.array([ex, ey])
 
             # Draw a box around the eye
-            cv2.rectangle(roi_color,(ex,ey),(ex+ew,ey+eh),(0,255,0),1)
+            cv2.rectangle(roi_color,(ex,ey),(ex+ew,ey+eh),(0,255,0),2)
 
             # Plot each pf the landmarks
             for ix in range(28):
                 location = tuple(ldmarks[ix,:].astype(int).tolist())
-                cv2.circle(roi_color,location, 1, (0,0,255))
+                cv2.circle(roi_color,location, 1, (255,255,255))
 
     # Display the resulting frame
     cv2.imshow('frame',frame)
