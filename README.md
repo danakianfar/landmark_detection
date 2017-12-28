@@ -14,7 +14,7 @@ Code for the CNN-based Eye Landmark Estimation project under the supervision of 
 
 Synthetic Data             |  Real Data
 :-------------------------:|:-------------------------:
-<img src="synth_results.png" alt="Results on synthetic data" width="400" />  |  <img src="real_results.png" alt="Results on real data" width="400" />
+<img src="img/synth_results.png" width="400" />  |  <img src="img/real_results.png" width="400" />
 
 <p align="center"> 
   <i> White: true labels - Red: estimated landmarks </i>
@@ -22,12 +22,12 @@ Synthetic Data             |  Real Data
 
 
 ## Documents
-- [Paper](report.pdf)
-- [Presentation](presentation.pdf)
+- [Paper](documents/report.pdf)
+- [Presentation](documents/presentation.pdf)
 
 ## Testing
 ```bash
-python live_demo.py
+python src/live_demo.py
 ```
 ## Dependencies
 
