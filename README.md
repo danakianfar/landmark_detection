@@ -2,12 +2,6 @@
 
 [![License](http://img.shields.io/:license-mit-blue.svg)](LICENSE)
 
-## Contributors
-
-- [Dana Kianfar](https://github.com/danakianfar)
-- [Jose Gallego](https://github.com/jgalle29)
-
-
 ## Description
 
 Code for the CNN-based Eye Landmark Estimation project under the supervision of Roberto Valenti at [SightCorp](http://sightcorp.com).
@@ -38,6 +32,11 @@ python live_demo.py
 ## Dependencies
 
 See requirements.txt.
+
+## Contributors
+
+- [Dana Kianfar](https://github.com/danakianfar)
+- [Jose Gallego](https://github.com/jgalle29)
 
 ## Copyright
 
