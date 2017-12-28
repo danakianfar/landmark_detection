@@ -2,10 +2,15 @@
 
 [![License](http://img.shields.io/:license-mit-blue.svg)](LICENSE)
 
+## Contributors
+
+- [Dana Kianfar](https://github.com/danakianfar)
+- [Jose Gallego](https://github.com/jgalle29)
+
+
 ## Description
 
-Code for the CNN-based Eye Landmark Estimation project by Dana Kianfar and Jose Gallego under the supervision of Roberto Valenti
-at [SightCorp](http://sightcorp.com).
+Code for the CNN-based Eye Landmark Estimation project under the supervision of Roberto Valenti at [SightCorp](http://sightcorp.com).
 
 Robust facial landmark estimation in-the-wild is a challenging task due to many variations in image conditions, pose and 
 occlusion. Traditional research in landmark estimation uses feature-based methods and the extension of such approaches 
