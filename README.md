@@ -31,7 +31,7 @@ python src/live_demo.py
 ```
 ## Dependencies
 
-See requirements.txt.
+See [requirements.txt](./requirements.txt).
 
 ## Contributors
 
