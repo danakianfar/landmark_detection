@@ -17,7 +17,7 @@ Synthetic Data             |  Real Data
 <img src="img/synth_results.png" width="400" />  |  <img src="img/real_results.png" width="400" />
 
 <p align="center"> 
-  <i> White: true labels - Red: estimated landmarks </i>
+  <i> Yellow: true labels - Red: estimated landmarks </i>
 </p>
 
 
