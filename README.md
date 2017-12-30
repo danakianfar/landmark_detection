@@ -43,5 +43,5 @@ See [requirements.txt](./requirements.txt).
 Copyright © 2017 Dana Kianfar and Jose Gallego.
 
 <p align="justify">
-This project is distributed under the <a href="LICENSE">MIT license</a>. This was developed as part of the Project AI course coordinated by Maarten van Someren at the University of Amsterdam. Please follow the <a href="http://student.uva.nl/en/az/content/plagiarism-and-fraud/plagiarism-and-fraud.html">UvA regulations governing Fraud and Plagiarism</a> in case you are a student.
+This project is distributed under the <a href="LICENSE">MIT license</a>. This was developed as part of the Project AI course coordinated by Maarten van Someren at the University of Amsterdam. Please review the <a href="http://student.uva.nl/en/content/az/plagiarism-and-fraud/plagiarism-and-fraud.html">UvA regulations governing Fraud and Plagiarism</a> in case you are a student at the UvA.
 </p>
